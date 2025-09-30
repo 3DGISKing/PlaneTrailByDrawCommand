@@ -28,7 +28,7 @@ viewer.clock.startTime = start.clone();
 viewer.clock.stopTime = stop.clone();
 viewer.clock.currentTime = start.clone();
 viewer.clock.clockRange = Cesium.ClockRange.LOOP_STOP; //Loop at the end
-viewer.clock.multiplier = 0.1;
+viewer.clock.multiplier = 1;
 
 //Set timeline to simulation bounds
 viewer.timeline.zoomTo(start, stop);

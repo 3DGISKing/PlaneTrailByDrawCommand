@@ -15,7 +15,7 @@ class Trail {
     constructor(scene) {
         this._scene = scene;
 
-        this._totalParticleCount = UPDATE_COUNT_OF_PARTICLE_COUNT * 10;
+        this._totalParticleCount = UPDATE_COUNT_OF_PARTICLE_COUNT * 360;
 
         const count = this._totalParticleCount;
 

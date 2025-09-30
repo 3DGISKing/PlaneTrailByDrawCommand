@@ -38,6 +38,9 @@ float cubicOut(float t) {
 }
 
 void main() {
+    // mouse.x : timestamp when the particle is created
+    float progress = clamp((timestamp - mouse.x) / 5.0 , 0.0, 1.);
+
     float viewDependentRad = 0.1;
     float rad = viewDependentRad;
 
@@ -50,7 +53,7 @@ void main() {
     vec3 currentPosition = vec3(x, y, z);
     gl_Position = czm_modelViewProjection * vec4(currentPosition, 1.0);
 
-    gl_PointSize = 10.0;
+    gl_PointSize = 10.0 * progress;
 }`;
 
 export default vs;
