@@ -8,6 +8,7 @@ const POSITION_ATTRIBUTE_COUNT = 3;
 const MOUSE_ATTRIBUTE_COUNT = 4;
 const scratchStep = new Cartesian3();
 const scratchSubPosition = new Cartesian3();
+const scratchWorldPosition = new Cartesian3();
 const scratchLocal = new Cartesian3();
 
 class Trail {
@@ -19,6 +20,7 @@ class Trail {
         const count = this._totalParticleCount;
 
         this._positions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
+        this._worldPositions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
 
         this._mouse = new Float32Array(count * MOUSE_ATTRIBUTE_COUNT);
         this._afront = new Float32Array(count * 2);
@@ -85,11 +87,23 @@ class Trail {
                 subPosition = Cartesian3.add(this._oldPosition, step, scratchSubPosition);
             }
 
-            const local = Matrix4.multiplyByPoint(this._inverseModelMatrix, subPosition, scratchLocal);
+            this._worldPositions[ci + 0] = subPosition.x;
+            this._worldPositions[ci + 1] = subPosition.y;
+            this._worldPositions[ci + 2] = subPosition.z;
+        }
 
-            this._positions[ci + 0] = local.x;
-            this._positions[ci + 1] = local.y;
-            this._positions[ci + 2] = local.z;
+        for (let i = 0; i < this._totalParticleCount * 3; i += 3) {
+            const worldPosition = scratchWorldPosition;
+
+            worldPosition.x = this._worldPositions[i + 0];
+            worldPosition.y = this._worldPositions[i + 1];
+            worldPosition.z = this._worldPositions[i + 2];
+
+            const local = Matrix4.multiplyByPoint(this._inverseModelMatrix, worldPosition, scratchLocal);
+
+            this._positions[i + 0] = local.x;
+            this._positions[i + 1] = local.y;
+            this._positions[i + 2] = local.z;
         }
 
         for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
