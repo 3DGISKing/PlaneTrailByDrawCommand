@@ -37,6 +37,14 @@ float sineOut(float t) {
 const vec3 baseColor = vec3(170., 133., 88.) / 255.;
 
 void main() {
+    vec2 p = gl_PointCoord * 2. - 1.;
+    float len = length(p);
+
+    float cBlur = blur * 0.5;
+    float shape = smoothstep(1. - cBlur, 1. + cBlur, (1. - cBlur) / len);
+    
+    if (shape == 0.0) discard;  
+
     out_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
 }`;
 

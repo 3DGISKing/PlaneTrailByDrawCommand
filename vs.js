@@ -50,7 +50,7 @@ void main() {
     vec3 currentPosition = vec3(x, y, z);
     gl_Position = czm_modelViewProjection * vec4(currentPosition, 1.0);
 
-    gl_PointSize = 5.0;
+    gl_PointSize = 10.0;
 }`;
 
 export default vs;
