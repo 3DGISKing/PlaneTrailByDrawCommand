@@ -45,7 +45,7 @@ void main() {
     
     if (shape == 0.0) discard;  
 
-    out_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+    out_FragColor = vec4(1.0, 1.0, 0.0, shape);
 }`;
 
 export default fs;
