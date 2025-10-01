@@ -23,13 +23,14 @@ class Trail {
         this._worldPositions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
 
         this._mouse = new Float32Array(count * MOUSE_ATTRIBUTE_COUNT);
-        this._random = new Float32Array(count);
+        this._timestamp = new Float32Array(count);
 
         const positions = this._positions;
         const mouse = this._mouse;
 
         this._positionIndex = 0;
         this._mouseIndex = 0;
+        this._timestampIndex = 0;
 
         for (let i = 0; i < count; i++) {
             positions[i * 3 + 0] = 0;
@@ -41,10 +42,10 @@ class Trail {
             mouse[i * 4 + 2] = Math.random();
             mouse[i * 4 + 3] = Math.random();
 
-            this._random[i] = Math.random();
+            this._timestamp[i] = 0;
         }
 
-        this._timestamp = 0; // JulianDate.secondsOfDay
+        this._sysTimestamp = 0; // JulianDate.secondsOfDay
         this._oldPosition = null;
         this._modelMatrix = new Matrix4();
         this._inverseModelMatrix = new Matrix4();
@@ -107,9 +108,16 @@ class Trail {
             this._mouse[ci + 0] = this._timestamp;
         }
 
+        for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
+            const ci = (this._timestampIndex % totalParticleCount) + i * 1;
+
+            this._timestamp[ci + 0] = this._sysTimestamp;
+        }
+
         this._oldPosition = position;
         this._positionIndex += POSITION_ATTRIBUTE_COUNT * UPDATE_COUNT_OF_PARTICLE_COUNT;
         this._mouseIndex += MOUSE_ATTRIBUTE_COUNT * UPDATE_COUNT_OF_PARTICLE_COUNT;
+        this._timestampIndex += 1 * UPDATE_COUNT_OF_PARTICLE_COUNT;
 
         const geometry = new Geometry({
             attributes: {
@@ -125,10 +133,10 @@ class Trail {
                     values: this._mouse
                 }),
 
-                random: new GeometryAttribute({
+                timestamp: new GeometryAttribute({
                     componentDatatype: Cesium.ComponentDatatype.FLOAT,
                     componentsPerAttribute: 1,
-                    values: this._random
+                    values: this._timestamp
                 })
             },
             primitiveType: PrimitiveType.POINTS
@@ -140,7 +148,7 @@ class Trail {
             attributeLocations: {
                 position: 0,
                 mouse: 1,
-                random: 2
+                timestamp: 2
             }
         });
     }
@@ -153,7 +161,7 @@ class Trail {
             attributeLocations: {
                 position: 0,
                 mouse: 1,
-                random: 2
+                timestamp: 2
             }
         });
 
@@ -162,7 +170,7 @@ class Trail {
             shaderProgram: shaderProgram,
             uniformMap: {
                 pixelRatio: () => window.devicePixelRatio,
-                timestamp: () => this._timestamp,
+                sysTimestamp: () => this._sysTimestamp,
                 size: () => 0.05,
                 minSize: () => 1,
                 speed: () => 0.012,
@@ -195,7 +203,7 @@ class Trail {
     }
 
     updateTimestamp(julianDate) {
-        this._timestamp = julianDate.secondsOfDay;
+        this._sysTimestamp = julianDate.secondsOfDay;
     }
 
     update(frameState) {

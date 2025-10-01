@@ -4,10 +4,10 @@ precision highp int;
 
 in vec3 position;
 in vec4 mouse;
-in float random;
+in float timestamp;
 
 uniform float pixelRatio;
-uniform float timestamp;
+uniform float sysTimestamp;
 uniform float size;
 uniform float minSize;
 uniform float speed;
@@ -36,8 +36,7 @@ float cubicOut(float t) {
 }
 
 void main() {
-    // mouse.x : timestamp when the particle is created
-    float progress = clamp((timestamp - mouse.x) / 5.0 , 0.0, 1.);
+    float progress = clamp((sysTimestamp - timestamp) / 5.0 , 0.0, 1.);
 
     float diff = 1.0;
 
