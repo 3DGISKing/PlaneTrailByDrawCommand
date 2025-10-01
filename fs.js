@@ -45,7 +45,11 @@ void main() {
     
     if (shape == 0.0) discard;  
 
-    out_FragColor = vec4(1.0, 1.0, 0.0, shape);
+    float alphaProgress = vProgress * fadeSpeed * mix(2.5, 1., pow(vDiff, 0.6));
+    alphaProgress *= mix(shortRangeFadeSpeed, 1., sineOut(vSpreadLength) * quadraticIn(vDiff));
+    float alpha = 1. - min(alphaProgress, 1.);
+
+    out_FragColor = vec4(1.0, 1.0, 0.0, shape * alpha);
 }`;
 
 export default fs;

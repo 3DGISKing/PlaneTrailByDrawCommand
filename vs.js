@@ -50,6 +50,11 @@ void main() {
     float z = 0.0;
 
     vec3 currentPosition = vec3(x, y, z);
+
+    vProgress = progress;
+    vDiff = diff;
+    vSpreadLength = cPosition.y;
+
     gl_Position = czm_modelViewProjection * vec4(currentPosition, 1.0);
 
     gl_PointSize = 10.0 * progress;
