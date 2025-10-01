@@ -23,12 +23,10 @@ class Trail {
         this._worldPositions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
 
         this._mouse = new Float32Array(count * MOUSE_ATTRIBUTE_COUNT);
-        this._afront = new Float32Array(count * 2);
         this._random = new Float32Array(count);
 
         const positions = this._positions;
         const mouse = this._mouse;
-        const aFront = this._afront;
 
         this._positionIndex = 0;
         this._mouseIndex = 0;
@@ -42,9 +40,6 @@ class Trail {
             mouse[i * 4 + 1] = Math.random();
             mouse[i * 4 + 2] = Math.random();
             mouse[i * 4 + 3] = Math.random();
-
-            aFront[i * 2 + 0] = 0;
-            aFront[i * 2 + 1] = 0;
 
             this._random[i] = Math.random();
         }
@@ -129,11 +124,7 @@ class Trail {
                     componentsPerAttribute: 4,
                     values: this._mouse
                 }),
-                aFront: new GeometryAttribute({
-                    componentDatatype: Cesium.ComponentDatatype.FLOAT,
-                    componentsPerAttribute: 2,
-                    values: this._afront
-                }),
+
                 random: new GeometryAttribute({
                     componentDatatype: Cesium.ComponentDatatype.FLOAT,
                     componentsPerAttribute: 1,
@@ -149,8 +140,7 @@ class Trail {
             attributeLocations: {
                 position: 0,
                 mouse: 1,
-                aFront: 2,
-                random: 3
+                random: 2
             }
         });
     }
@@ -163,8 +153,7 @@ class Trail {
             attributeLocations: {
                 position: 0,
                 mouse: 1,
-                aFront: 2,
-                random: 3
+                random: 2
             }
         });
 

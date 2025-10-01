@@ -3,9 +3,7 @@ precision highp float;
 precision highp int;
 
 in vec3 position;
-in vec3 rPosition;
 in vec4 mouse;
-in vec2 aFront;
 in float random;
 
 uniform float pixelRatio;
@@ -41,13 +39,15 @@ void main() {
     // mouse.x : timestamp when the particle is created
     float progress = clamp((timestamp - mouse.x) / 5.0 , 0.0, 1.);
 
-    float viewDependentRad = 0.1;
-    float rad = viewDependentRad;
+    float diff = 1.0;
 
-    float theta = random * PI2 - PI;
+    vec3 cPosition = vec3(mouse.y, mouse.z, mouse.w) * 2. - 1.;
 
-    float x = position.x + rad * cos(theta);
-    float y = position.y + rad * sin(theta);
+    float radian = cPosition.x * PI2 - PI;
+    vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * mix(1., maxSpread, diff) * cPosition.y;
+
+    float x = position.x + xySpread.x;
+    float y = position.y + xySpread.y;
     float z = 0.0;
 
     vec3 currentPosition = vec3(x, y, z);
