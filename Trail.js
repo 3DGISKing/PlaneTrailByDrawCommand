@@ -5,7 +5,7 @@ import fs from "./fs.js";
 
 const UPDATE_COUNT_OF_PARTICLE_COUNT = 1;
 const POSITION_ATTRIBUTE_COUNT = 3;
-const MOUSE_ATTRIBUTE_COUNT = 4;
+const RANDOM_ATTRIBUTE_COUNT = 4;
 const scratchStep = new Cartesian3();
 const scratchSubPosition = new Cartesian3();
 const scratchWorldPosition = new Cartesian3();
@@ -22,14 +22,14 @@ class Trail {
         this._positions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
         this._worldPositions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
 
-        this._mouse = new Float32Array(count * MOUSE_ATTRIBUTE_COUNT);
+        this._random = new Float32Array(count * RANDOM_ATTRIBUTE_COUNT);
         this._timestamp = new Float32Array(count);
 
         const positions = this._positions;
-        const mouse = this._mouse;
+        const random = this._random;
 
         this._positionIndex = 0;
-        this._mouseIndex = 0;
+
         this._timestampIndex = 0;
 
         for (let i = 0; i < count; i++) {
@@ -37,10 +37,10 @@ class Trail {
             positions[i * 3 + 1] = 0;
             positions[i * 3 + 2] = 0;
 
-            mouse[i * 4 + 0] = -1;
-            mouse[i * 4 + 1] = Math.random();
-            mouse[i * 4 + 2] = Math.random();
-            mouse[i * 4 + 3] = Math.random();
+            random[i * 4 + 0] = Math.random();
+            random[i * 4 + 1] = Math.random();
+            random[i * 4 + 2] = Math.random();
+            random[i * 4 + 3] = Math.random();
 
             this._timestamp[i] = 0;
         }
@@ -103,12 +103,6 @@ class Trail {
         }
 
         for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
-            const ci = (this._mouseIndex % (totalParticleCount * MOUSE_ATTRIBUTE_COUNT)) + i * MOUSE_ATTRIBUTE_COUNT;
-
-            this._mouse[ci + 0] = this._timestamp;
-        }
-
-        for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
             const ci = (this._timestampIndex % totalParticleCount) + i * 1;
 
             this._timestamp[ci + 0] = this._sysTimestamp;
@@ -116,7 +110,7 @@ class Trail {
 
         this._oldPosition = position;
         this._positionIndex += POSITION_ATTRIBUTE_COUNT * UPDATE_COUNT_OF_PARTICLE_COUNT;
-        this._mouseIndex += MOUSE_ATTRIBUTE_COUNT * UPDATE_COUNT_OF_PARTICLE_COUNT;
+
         this._timestampIndex += 1 * UPDATE_COUNT_OF_PARTICLE_COUNT;
 
         const geometry = new Geometry({
@@ -126,13 +120,11 @@ class Trail {
                     componentsPerAttribute: 3,
                     values: this._positions
                 }),
-
-                mouse: new GeometryAttribute({
+                random: new GeometryAttribute({
                     componentDatatype: Cesium.ComponentDatatype.FLOAT,
                     componentsPerAttribute: 4,
-                    values: this._mouse
+                    values: this._random
                 }),
-
                 timestamp: new GeometryAttribute({
                     componentDatatype: Cesium.ComponentDatatype.FLOAT,
                     componentsPerAttribute: 1,
@@ -147,7 +139,7 @@ class Trail {
             geometry: geometry,
             attributeLocations: {
                 position: 0,
-                mouse: 1,
+                random: 1,
                 timestamp: 2
             }
         });
@@ -160,7 +152,7 @@ class Trail {
             fragmentShaderSource: fs,
             attributeLocations: {
                 position: 0,
-                mouse: 1,
+                random: 1,
                 timestamp: 2
             }
         });

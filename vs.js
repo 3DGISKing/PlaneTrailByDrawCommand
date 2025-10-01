@@ -3,7 +3,7 @@ precision highp float;
 precision highp int;
 
 in vec3 position;
-in vec4 mouse;
+in vec4 random;
 in float timestamp;
 
 uniform float pixelRatio;
@@ -40,7 +40,7 @@ void main() {
 
     float diff = 1.0;
 
-    vec3 cPosition = vec3(mouse.y, mouse.z, mouse.w) * 2. - 1.;
+    vec3 cPosition = vec3(random.x, random.y, random.z) * 2. - 1.;
 
     float radian = cPosition.x * PI2 - PI;
     vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * mix(1., maxSpread, diff) * cPosition.y;
