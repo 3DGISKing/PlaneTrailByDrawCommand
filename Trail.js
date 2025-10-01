@@ -1,4 +1,4 @@
-const { BlendingState, Cartesian3, DrawCommand, Geometry, GeometryAttribute, Matrix4, Pass, PrimitiveType, RenderState, ShaderProgram, VertexArray, Viewer } = Cesium;
+const { BlendingState, Cartesian2, Cartesian3, DrawCommand, EllipsoidGeodesic, Geometry, GeometryAttribute, Matrix4, Pass, PrimitiveType, RenderState, ShaderProgram, VertexArray, Viewer } = Cesium;
 
 import vs from "./vs.js";
 import fs from "./fs.js";
@@ -10,6 +10,8 @@ const scratchStep = new Cartesian3();
 const scratchSubPosition = new Cartesian3();
 const scratchWorldPosition = new Cartesian3();
 const scratchLocal = new Cartesian3();
+
+const geodesic = new EllipsoidGeodesic();
 
 class Trail {
     constructor(scene) {
@@ -49,6 +51,7 @@ class Trail {
         this._oldPosition = null;
         this._modelMatrix = new Matrix4();
         this._inverseModelMatrix = new Matrix4();
+        this._pixelSize = 0;
 
         this._update = true;
     }
@@ -146,6 +149,8 @@ class Trail {
     }
 
     _createDrawCommand(vertexArray) {
+        this._pixelSize = this._calcPixelSize();
+
         const shaderProgram = ShaderProgram.fromCache({
             context: this._scene.context,
             vertexShaderSource: vs,
@@ -161,6 +166,7 @@ class Trail {
             vertexArray: vertexArray,
             shaderProgram: shaderProgram,
             uniformMap: {
+                pixelSize: () => this._pixelSize,
                 pixelRatio: () => window.devicePixelRatio,
                 sysTimestamp: () => this._sysTimestamp,
                 size: () => 0.05,
@@ -169,7 +175,7 @@ class Trail {
                 fadeSpeed: () => 1.1,
                 shortRangeFadeSpeed: () => 1.3,
                 minFlashingSpeed: () => 0.1,
-                spread: () => 7,
+                spread: () => 5,
                 maxSpread: () => 5,
                 maxZ: () => 100,
                 blur: () => 1,
@@ -218,6 +224,63 @@ class Trail {
         if (passes.render) {
             commandList.push(this._command);
         }
+    }
+
+    _calcPixelSize() {
+        const scene = this._scene;
+
+        const width = scene.canvas.clientWidth;
+        const height = scene.canvas.clientHeight;
+
+        const centerX = Math.floor(width / 2);
+        const centerY = Math.floor(height / 2);
+
+        const globe = scene.globe;
+
+        let leftPosition;
+        let rightPosition;
+
+        let leftCartographic;
+        let rightCartographic;
+
+        let pixelDistance = -1;
+
+        for (let x = centerX; x < width; x++) {
+            for (let y = centerY; y < height; y++) {
+                const left = scene.camera.getPickRay(new Cartesian2(x, y));
+                const right = scene.camera.getPickRay(new Cartesian2(x + 1, y));
+
+                if (!left) {
+                    continue;
+                }
+
+                if (!right) {
+                    continue;
+                }
+
+                leftPosition = globe.pick(left, scene);
+                rightPosition = globe.pick(right, scene);
+
+                if (!leftPosition) {
+                    continue;
+                }
+
+                if (!rightPosition) {
+                    continue;
+                }
+
+                leftCartographic = globe.ellipsoid.cartesianToCartographic(leftPosition);
+                rightCartographic = globe.ellipsoid.cartesianToCartographic(rightPosition);
+
+                geodesic.setEndPoints(leftCartographic, rightCartographic);
+
+                pixelDistance = geodesic.surfaceDistance;
+
+                return pixelDistance;
+            }
+        }
+
+        return -1.0;
     }
 }
 
