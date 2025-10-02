@@ -37,9 +37,6 @@ float cubicOut(float t) {
 }
 
 void main() {
-    if( pixelSize == -1.0) {
-        return;
-    }
 
     float progress = clamp((sysTimestamp - timestamp) / 5.0 , 0.0, 1.);
 
@@ -48,7 +45,7 @@ void main() {
     vec3 cPosition = vec3(random.x, random.y, random.z) * 2. - 1.;
 
     float radian = cPosition.x * PI2 - PI;
-    vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * pixelSize * mix(1., maxSpread, diff) * cPosition.y;
+    vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * mix(1., maxSpread, diff) * cPosition.y;
 
     float x = position.x + xySpread.x;
     float y = position.y + xySpread.y;

@@ -82,7 +82,7 @@ const planeEntity = viewer.entities.add({
     model: {
         uri: "./Cesium_Air.glb",
         minimumPixelSize: 1,
-        scale: 0.001
+        scale: 1
     },
 
     //Show the path as a pink line sampled in 1 second increments.
@@ -172,14 +172,8 @@ const debugModelMatrixPrimitive = new DebugModelMatrixPrimitive({
 
 scene.primitives.add(debugModelMatrixPrimitive);
 
-let previousTime = Cesium.JulianDate.clone(viewer.clock.currentTime);
-
 viewer.clock.onTick.addEventListener((e) => {
-    if (!Cesium.JulianDate.equalsEpsilon(previousTime, viewer.clock.currentTime, 1)) {
-        trail.updateTimestamp(viewer.clock.currentTime);
-
-        previousTime = Cesium.JulianDate.clone(viewer.clock.currentTime);
-    }
+    trail.updateTimestamp(viewer.clock.currentTime);
 });
 
 function computeModelMatrix(entity, time) {
