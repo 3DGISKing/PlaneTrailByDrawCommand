@@ -4,9 +4,9 @@ const { BlendingState, Cartesian2, Cartesian3, DrawCommand, EllipsoidGeodesic, G
 import vs from "./vs.js";
 import fs from "./fs.js";
 
-const UPDATE_COUNT_OF_PARTICLE_COUNT = 80;
 const POSITION_ATTRIBUTE_COUNT = 3;
 const RANDOM_ATTRIBUTE_COUNT = 4;
+
 const scratchStep = new Cartesian3();
 const scratchSubPosition = new Cartesian3();
 const scratchWorldPosition = new Cartesian3();
@@ -20,15 +20,16 @@ class Trail {
         this._entity = entity;
         this._clock = clock;
 
-        this._totalParticleCount = UPDATE_COUNT_OF_PARTICLE_COUNT * 360;
+        this._countOfTrailSegment = 360;
+        this._countOfParticlePerTrailSegment = 80;
 
-        const count = this._totalParticleCount;
+        const totalParticleCount = this._countOfParticlePerTrailSegment * this._countOfTrailSegment;
 
-        this._positions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
-        this._worldPositions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
+        this._positions = new Float32Array(totalParticleCount * POSITION_ATTRIBUTE_COUNT);
+        this._worldPositions = new Float32Array(totalParticleCount * POSITION_ATTRIBUTE_COUNT);
 
-        this._random = new Float32Array(count * RANDOM_ATTRIBUTE_COUNT);
-        this._timestamp = new Float32Array(count);
+        this._random = new Float32Array(totalParticleCount * RANDOM_ATTRIBUTE_COUNT);
+        this._timestamp = new Float32Array(totalParticleCount);
 
         const positions = this._positions;
         const random = this._random;
@@ -37,7 +38,7 @@ class Trail {
 
         this._timestampIndex = 0;
 
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < totalParticleCount; i++) {
             positions[i * 3 + 0] = 0;
             positions[i * 3 + 1] = 0;
             positions[i * 3 + 2] = 0;
@@ -90,15 +91,15 @@ class Trail {
             Cartesian3.subtract(position, this._oldPosition, diff);
         }
 
-        const totalParticleCount = this._totalParticleCount;
+        const totalParticleCount = this._countOfParticlePerTrailSegment * this._countOfTrailSegment;
 
-        for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
+        for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
             const ci = (this._positionIndex % (totalParticleCount * POSITION_ATTRIBUTE_COUNT)) + i * POSITION_ATTRIBUTE_COUNT;
 
             let subPosition = position;
 
             if (this._oldPosition) {
-                const step = Cartesian3.multiplyByScalar(diff, i / UPDATE_COUNT_OF_PARTICLE_COUNT, scratchStep);
+                const step = Cartesian3.multiplyByScalar(diff, i / this._countOfParticlePerTrailSegment, scratchStep);
 
                 subPosition = Cartesian3.add(this._oldPosition, step, scratchSubPosition);
             }
@@ -108,7 +109,7 @@ class Trail {
             this._worldPositions[ci + 2] = subPosition.z;
         }
 
-        for (let i = 0; i < this._totalParticleCount * 3; i += 3) {
+        for (let i = 0; i < totalParticleCount * 3; i += 3) {
             const worldPosition = scratchWorldPosition;
 
             worldPosition.x = this._worldPositions[i + 0];
@@ -122,16 +123,16 @@ class Trail {
             this._positions[i + 2] = local.z;
         }
 
-        for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
+        for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
             const ci = (this._timestampIndex % totalParticleCount) + i * 1;
 
             this._timestamp[ci + 0] = this._sysTimestamp;
         }
 
         this._oldPosition = position;
-        this._positionIndex += POSITION_ATTRIBUTE_COUNT * UPDATE_COUNT_OF_PARTICLE_COUNT;
+        this._positionIndex += POSITION_ATTRIBUTE_COUNT * this._countOfParticlePerTrailSegment;
 
-        this._timestampIndex += 1 * UPDATE_COUNT_OF_PARTICLE_COUNT;
+        this._timestampIndex += 1 * this._countOfParticlePerTrailSegment;
 
         const geometry = new Geometry({
             attributes: {
@@ -328,7 +329,7 @@ class Trail {
         const startTime = JulianDate.addSeconds(endTime, -delta, new JulianDate());
 
         const step = 1 / 20;
-        const count = (delta / step) * UPDATE_COUNT_OF_PARTICLE_COUNT;
+        const count = (delta / step) * this._countOfParticlePerTrailSegment;
 
         const positions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
         const random = new Float32Array(count * RANDOM_ATTRIBUTE_COUNT);
@@ -351,13 +352,13 @@ class Trail {
                 Cartesian3.subtract(position, oldPosition, diff);
             }
 
-            for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
-                const ci = (timeIndex * UPDATE_COUNT_OF_PARTICLE_COUNT + i) * POSITION_ATTRIBUTE_COUNT;
+            for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
+                const ci = (timeIndex * this._countOfParticlePerTrailSegment + i) * POSITION_ATTRIBUTE_COUNT;
 
                 let subPosition = position;
 
                 if (oldPosition) {
-                    const step = Cartesian3.multiplyByScalar(diff, i / UPDATE_COUNT_OF_PARTICLE_COUNT, scratchStep);
+                    const step = Cartesian3.multiplyByScalar(diff, i / this._countOfParticlePerTrailSegment, scratchStep);
 
                     subPosition = Cartesian3.add(oldPosition, step, scratchSubPosition);
                 }
@@ -377,8 +378,8 @@ class Trail {
 
             oldPosition = position;
 
-            for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
-                const ci = (timeIndex * UPDATE_COUNT_OF_PARTICLE_COUNT + i) * RANDOM_ATTRIBUTE_COUNT;
+            for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
+                const ci = (timeIndex * this._countOfParticlePerTrailSegment + i) * RANDOM_ATTRIBUTE_COUNT;
 
                 random[ci + 0] = Math.random();
                 random[ci + 1] = Math.random();
@@ -386,8 +387,8 @@ class Trail {
                 random[ci + 3] = Math.random();
             }
 
-            for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
-                const ci = timeIndex * UPDATE_COUNT_OF_PARTICLE_COUNT + i;
+            for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
+                const ci = timeIndex * this._countOfParticlePerTrailSegment + i;
 
                 timestamp[ci + 0] = t.secondsOfDay;
             }
