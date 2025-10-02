@@ -182,17 +182,17 @@ const debugModelMatrixPrimitive = new DebugModelMatrixPrimitive({
 
 scene.primitives.add(debugModelMatrixPrimitive);
 
-viewer.clock.onTick.addEventListener((e) => {
-    trail.updateTimestamp(viewer.clock.currentTime);
-});
-
 function computeModelMatrix(entity, time) {
     return entity.computeModelMatrix(time, new Cesium.Matrix4());
 }
 
-viewer.scene.preUpdate.addEventListener(function (scene, time) {
+viewer.clock.onTick.addEventListener((e) => {
+    const time = viewer.clock.currentTime;
+    trail.updateTimestamp(time);
+
     const modelMatrix = computeModelMatrix(planeEntity, time);
     debugModelMatrixPrimitive.modelMatrix = modelMatrix;
-    const planePosition = planeEntity.position.getValue(viewer.clock.currentTime);
-    trail.updatePosition(modelMatrix, planePosition);
+
+    const planePosition = planeEntity.position.getValue(time);
+    trail.updatePosition(modelMatrix);
 });
