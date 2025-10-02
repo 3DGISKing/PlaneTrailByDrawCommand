@@ -172,7 +172,7 @@ viewer.trackedEntity = planeEntity;
 
 const scene = viewer.scene;
 
-const trail = new Trail(scene);
+const trail = new Trail(scene, planeEntity, viewer.clock);
 scene.primitives.add(trail);
 
 const debugModelMatrixPrimitive = new DebugModelMatrixPrimitive({
@@ -182,17 +182,10 @@ const debugModelMatrixPrimitive = new DebugModelMatrixPrimitive({
 
 scene.primitives.add(debugModelMatrixPrimitive);
 
-function computeModelMatrix(entity, time) {
-    return entity.computeModelMatrix(time, new Cesium.Matrix4());
-}
-
 viewer.clock.onTick.addEventListener((e) => {
     const time = viewer.clock.currentTime;
-    trail.updateTimestamp(time);
 
-    const modelMatrix = computeModelMatrix(planeEntity, time);
+    const modelMatrix = planeEntity.computeModelMatrix(time, new Cesium.Matrix4());
+
     debugModelMatrixPrimitive.modelMatrix = modelMatrix;
-
-    const planePosition = planeEntity.position.getValue(time);
-    trail.updatePosition(modelMatrix);
 });

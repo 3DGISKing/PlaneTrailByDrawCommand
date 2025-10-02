@@ -1,9 +1,10 @@
-const { BlendingState, Cartesian2, Cartesian3, DrawCommand, EllipsoidGeodesic, Geometry, GeometryAttribute, Matrix4, Pass, PrimitiveType, RenderState, ShaderProgram, VertexArray, Viewer } = Cesium;
+const { BlendingState, Cartesian2, Cartesian3, DrawCommand, EllipsoidGeodesic, Geometry, GeometryAttribute, JulianDate, Matrix4, Pass, PrimitiveType, RenderState, ShaderProgram, VertexArray } =
+    Cesium;
 
 import vs from "./vs.js";
 import fs from "./fs.js";
 
-const UPDATE_COUNT_OF_PARTICLE_COUNT = 1;
+const UPDATE_COUNT_OF_PARTICLE_COUNT = 80;
 const POSITION_ATTRIBUTE_COUNT = 3;
 const RANDOM_ATTRIBUTE_COUNT = 4;
 const scratchStep = new Cartesian3();
@@ -14,8 +15,10 @@ const scratchLocal = new Cartesian3();
 const geodesic = new EllipsoidGeodesic();
 
 class Trail {
-    constructor(scene) {
+    constructor(scene, entity, clock) {
         this._scene = scene;
+        this._entity = entity;
+        this._clock = clock;
 
         this._totalParticleCount = UPDATE_COUNT_OF_PARTICLE_COUNT * 360;
 
@@ -54,6 +57,20 @@ class Trail {
         this._pixelSize = 0;
 
         this._update = true;
+
+        this._clock.onTick.addEventListener((e) => {
+            const time = this._clock.currentTime;
+
+            this._sysTimestamp = time.secondsOfDay;
+
+            const modelMatrix = this._entity.computeModelMatrix(time, new Cesium.Matrix4());
+
+            this._update = true;
+
+            Matrix4.clone(modelMatrix, this._modelMatrix);
+
+            // trail.onTick();
+        });
     }
 
     isDestroyed() {
@@ -194,16 +211,6 @@ class Trail {
         });
     }
 
-    updatePosition(modelMatrix) {
-        this._update = true;
-
-        Matrix4.clone(modelMatrix, this._modelMatrix);
-    }
-
-    updateTimestamp(julianDate) {
-        this._sysTimestamp = julianDate.secondsOfDay;
-    }
-
     update(frameState) {
         if (this._update) {
             this._update = false;
@@ -216,6 +223,12 @@ class Trail {
             const vertexArray = this._createVertexArray(this._modelMatrix);
 
             this._command = this._createDrawCommand(vertexArray);
+
+            // this._command = this._createDrawCommandTest();
+        }
+
+        if (!this._command) {
+            return;
         }
 
         const commandList = frameState.commandList;
@@ -281,6 +294,141 @@ class Trail {
         }
 
         return -1.0;
+    }
+
+    onTick() {
+        const time = this._clock.currentTime;
+        this._sysTimestamp = time.secondsOfDay;
+
+        const modelMatrix = this._entity.computeModelMatrix(time, new Cesium.Matrix4());
+
+        Matrix4.clone(modelMatrix, this._modelMatrix);
+
+        Matrix4.inverse(modelMatrix, this._inverseModelMatrix);
+
+        this._update = true;
+    }
+
+    _prepareRandom() {
+        // for   count = 4800;
+        const count = 4800;
+        const random = new Float32Array(count * RANDOM_ATTRIBUTE_COUNT);
+
+        for (let i = 0; i < count; i++) {
+            random[i * 4 + 0] = Math.random();
+            random[i * 4 + 1] = Math.random();
+            random[i * 4 + 2] = Math.random();
+            random[i * 4 + 3] = Math.random();
+        }
+    }
+
+    _createDrawCommandTest() {
+        const delta = 3;
+        const endTime = this._clock.currentTime;
+        const startTime = JulianDate.addSeconds(endTime, -delta, new JulianDate());
+
+        const step = 1 / 20;
+        const count = (delta / step) * UPDATE_COUNT_OF_PARTICLE_COUNT;
+
+        const positions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
+        const random = new Float32Array(count * RANDOM_ATTRIBUTE_COUNT);
+        const timestamp = new Float32Array(count);
+
+        let timeIndex = 0;
+        let oldPosition;
+        const diff = new Cartesian3();
+
+        console.time("create");
+
+        for (let t = endTime; JulianDate.lessThan(startTime, t); t = JulianDate.addSeconds(t, -step, new JulianDate())) {
+            const position = this._entity.position.getValue(t);
+
+            if (!position) {
+                return undefined;
+            }
+
+            if (oldPosition) {
+                Cartesian3.subtract(position, oldPosition, diff);
+            }
+
+            for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
+                const ci = (timeIndex * UPDATE_COUNT_OF_PARTICLE_COUNT + i) * POSITION_ATTRIBUTE_COUNT;
+
+                let subPosition = position;
+
+                if (oldPosition) {
+                    const step = Cartesian3.multiplyByScalar(diff, i / UPDATE_COUNT_OF_PARTICLE_COUNT, scratchStep);
+
+                    subPosition = Cartesian3.add(oldPosition, step, scratchSubPosition);
+                }
+
+                const worldPosition = scratchWorldPosition;
+
+                worldPosition.x = subPosition.x;
+                worldPosition.y = subPosition.y;
+                worldPosition.z = subPosition.z;
+
+                const local = Matrix4.multiplyByPoint(this._inverseModelMatrix, worldPosition, scratchLocal);
+
+                positions[ci + 0] = local.x;
+                positions[ci + 1] = local.y;
+                positions[ci + 2] = local.z;
+            }
+
+            oldPosition = position;
+
+            for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
+                const ci = (timeIndex * UPDATE_COUNT_OF_PARTICLE_COUNT + i) * RANDOM_ATTRIBUTE_COUNT;
+
+                random[ci + 0] = Math.random();
+                random[ci + 1] = Math.random();
+                random[ci + 2] = Math.random();
+                random[ci + 3] = Math.random();
+            }
+
+            for (let i = 0; i < UPDATE_COUNT_OF_PARTICLE_COUNT; i++) {
+                const ci = timeIndex * UPDATE_COUNT_OF_PARTICLE_COUNT + i;
+
+                timestamp[ci + 0] = t.secondsOfDay;
+            }
+
+            timeIndex++;
+        }
+
+        console.timeEnd("create");
+
+        const geometry = new Geometry({
+            attributes: {
+                position: new GeometryAttribute({
+                    componentDatatype: Cesium.ComponentDatatype.FLOAT,
+                    componentsPerAttribute: 3,
+                    values: positions
+                }),
+                random: new GeometryAttribute({
+                    componentDatatype: Cesium.ComponentDatatype.FLOAT,
+                    componentsPerAttribute: 4,
+                    values: random
+                }),
+                timestamp: new GeometryAttribute({
+                    componentDatatype: Cesium.ComponentDatatype.FLOAT,
+                    componentsPerAttribute: 1,
+                    values: timestamp
+                })
+            },
+            primitiveType: PrimitiveType.POINTS
+        });
+
+        const vertexArray = VertexArray.fromGeometry({
+            context: this._scene.context,
+            geometry: geometry,
+            attributeLocations: {
+                position: 0,
+                random: 1,
+                timestamp: 2
+            }
+        });
+
+        return this._createDrawCommand(vertexArray);
     }
 }
 
