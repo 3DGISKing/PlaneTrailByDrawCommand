@@ -1,14 +1,24 @@
 import Trail from "./Trail.js";
 
-const { DebugModelMatrixPrimitive } = window.Cesium;
+const useOnlineResource = false;
+
+const { DebugModelMatrixPrimitive, TileMapServiceImageryProvider } = window.Cesium;
 
 const viewer = new Cesium.Viewer("cesiumContainer", {
     infoBox: false, //Disable InfoBox widget
     selectionIndicator: false, //Disable selection indicator
     shouldAnimate: true, // Enable animations
-    terrain: Cesium.Terrain.fromWorldTerrain(),
+    terrain: useOnlineResource ? Cesium.Terrain.fromWorldTerrain() : undefined,
     scene3DOnly: true
 });
+
+if (!useOnlineResource) {
+    viewer.imageryLayers.removeAll();
+
+    const provider = await TileMapServiceImageryProvider.fromUrl("./NaturalEarthII");
+
+    viewer.imageryLayers.addImageryProvider(provider);
+}
 
 //Enable lighting based on the sun position
 viewer.scene.globe.enableLighting = true;
