@@ -112,6 +112,9 @@ class Trail {
         const desiredPixelSizeOfTrail = 300;
         const pixelSizeOfTrailSegment = this._averageTickDistance / metersPerPixel;
         this._countOfTrailSegments = Math.ceil(desiredPixelSizeOfTrail / pixelSizeOfTrailSegment);
+        //test
+
+        this._countOfTrailSegments = 360;
     }
 
     _calibrate() {

@@ -92,7 +92,7 @@ const planeEntity = viewer.entities.add({
     model: {
         uri: "./Cesium_Air.glb",
         minimumPixelSize: 1,
-        scale: 0.01
+        scale: 1
     },
 
     //Show the path as a pink line sampled in 1 second increments.

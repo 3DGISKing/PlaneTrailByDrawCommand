@@ -46,7 +46,7 @@ void main() {
 
     float radian = cPosition.x * PI2 - PI;
 
-    float viewDependentSpreadFactor = 0.002; 
+    float viewDependentSpreadFactor = 1.0; 
 
     vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * viewDependentSpreadFactor * mix(1., maxSpread, diff) * cPosition.y;
 
