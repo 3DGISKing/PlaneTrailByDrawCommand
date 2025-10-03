@@ -37,8 +37,7 @@ float cubicOut(float t) {
 }
 
 void main() {
-
-    float progress = clamp((sysTimestamp - timestamp) / 5.0 , 0.0, 1.);
+    float progress = clamp((sysTimestamp - timestamp) / 10.0 , 0.0, 1.);
 
     vec3 startPosition = vec3(position.x, position.y, 0.0);
 
@@ -48,7 +47,7 @@ void main() {
 
     float radian = cPosition.x * PI2 - PI;
 
-    float viewDependentSpreadFactor = 1.0; 
+    float viewDependentSpreadFactor = 0.5; 
 
     vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * viewDependentSpreadFactor * mix(1., maxSpread, diff) * cPosition.y;
 
@@ -60,8 +59,10 @@ void main() {
     vec3 currentPosition = mix(startPosition, endPosition, positionProgress);
 
     vProgress = progress;
+    vRandom = random.w;
     vDiff = diff;
     vSpreadLength = cPosition.y;
+   // vPositionZ = position.z;
 
     gl_Position = czm_modelViewProjection * vec4(currentPosition, 1.0);
 

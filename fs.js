@@ -40,16 +40,23 @@ void main() {
     vec2 p = gl_PointCoord * 2. - 1.;
     float len = length(p);
 
+    float cRandom = random(vec2(vProgress * mix(minFlashingSpeed, 1., vRandom)));
+    cRandom = mix(0.3, 2., cRandom);
+
     float cBlur = blur * 0.5;
     float shape = smoothstep(1. - cBlur, 1. + cBlur, (1. - cBlur) / len);
     
-    if (shape == 0.0) discard;  
+    if (shape == 0.0) discard;
+    
+    // float darkness = mix(0.1, 1., vPositionZ);
+    float darkness = 1.0;
 
     float alphaProgress = vProgress * fadeSpeed * mix(2.5, 1., pow(vDiff, 0.6));
     alphaProgress *= mix(shortRangeFadeSpeed, 1., sineOut(vSpreadLength) * quadraticIn(vDiff));
     float alpha = 1. - min(alphaProgress, 1.);
+    alpha *= cRandom * vDiff;
 
-    out_FragColor = vec4(1.0, 1.0, 0.0, shape * alpha);
+    out_FragColor = vec4(baseColor * darkness * cRandom, shape * alpha);
 }`;
 
 export default fs;
