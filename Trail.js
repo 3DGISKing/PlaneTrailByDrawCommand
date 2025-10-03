@@ -37,7 +37,7 @@ class Trail {
         this._clock = clock;
 
         this._countOfTrailSegments = 0; // Initial value, will be updated dynamically
-        this._countOfParticlePerTrailSegment = 1;
+        this._countOfParticlePerTrailSegment = 800;
 
         this._sysTimestamp = 0; // JulianDate.secondsOfDay
         this._oldPosition = null;
@@ -57,6 +57,7 @@ class Trail {
         this._calibrateEnded = new Event();
 
         this._update = false;
+        this._calibrating = false;
 
         setTimeout(() => {
             this._calibrate();
@@ -76,7 +77,11 @@ class Trail {
                 // Log wheel data or manipulate the camera
                 console.log("Wheel event detected:");
 
-                this._calibrate();
+                if (this._calibrating) {
+                    console.warn("Currently calibrating, skipping recalibration.");
+                } else {
+                    this._calibrate();
+                }
             }, debounceDelay);
         });
 
@@ -118,6 +123,7 @@ class Trail {
     }
 
     _calibrate() {
+        this._calibrating = true;
         this._tickDistanceSum = 0;
         this._tickTimeSum = 0;
         this._tickCount = 0;
@@ -147,10 +153,9 @@ class Trail {
             this._tickDistanceSum += tickDistance;
             this._tickTimeSum += tickTime;
             this._tickCount++;
+            console.log(this._tickCount, tickDistance, tickTime, frameRate);
 
             if (this._tickCount === tickCountWindow) {
-                removeCallback();
-
                 this._averageTickDistance = this._tickDistanceSum / this._tickCount;
                 this._averageTickTime = this._tickTimeSum / this._tickCount;
 
@@ -162,9 +167,14 @@ class Trail {
                 console.log("Average Tick Distance:", this._averageTickDistance);
                 console.log("Average Tick Time:", this._averageTickTime);
                 console.log("Count of Trail Segments:", this._countOfTrailSegments);
+
+                this._calibrating = false;
+                removeCallback();
             }
 
-            console.log(this._tickCount, tickDistance, tickTime, frameRate);
+            if (this._tickCount > tickCountWindow) {
+                throw new Error("This should not happen");
+            }
 
             previousTime = JulianDate.clone(clock.currentTime);
             previousPosition = this._entity.position.getValue(clock.currentTime);
