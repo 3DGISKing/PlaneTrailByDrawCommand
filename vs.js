@@ -40,6 +40,8 @@ void main() {
 
     float progress = clamp((sysTimestamp - timestamp) / 5.0 , 0.0, 1.);
 
+    vec3 startPosition = vec3(position.x, position.y, 0.0);
+
     float diff = 1.0;
 
     vec3 cPosition = vec3(random.x, random.y, random.z) * 2. - 1.;
@@ -50,11 +52,12 @@ void main() {
 
     vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * viewDependentSpreadFactor * mix(1., maxSpread, diff) * cPosition.y;
 
-    float x = position.x + xySpread.x;
-    float y = position.y + xySpread.y;
-    float z = 0.0;
+    vec3 endPosition = startPosition;
+    endPosition.xy += xySpread;
+    endPosition.z = cPosition.z * maxZ;
 
-    vec3 currentPosition = vec3(x, y, z);
+    float positionProgress = cubicOut(progress * random.w);
+    vec3 currentPosition = mix(startPosition, endPosition, positionProgress);
 
     vProgress = progress;
     vDiff = diff;
@@ -62,8 +65,7 @@ void main() {
 
     gl_Position = czm_modelViewProjection * vec4(currentPosition, 1.0);
 
-    // gl_PointSize = 10.0 * progress;
-    gl_PointSize = 10.0;
+    gl_PointSize = max(currentPosition.z * size * diff * pixelRatio, minSize * (pixelRatio > 1. ? 1.3 : 1.));
 }`;
 
 export default vs;
