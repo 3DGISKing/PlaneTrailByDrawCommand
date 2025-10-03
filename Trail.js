@@ -5,6 +5,7 @@ const {
     Cartesian3,
     DrawCommand,
     EllipsoidGeodesic,
+    Event,
     Geometry,
     GeometryAttribute,
     JulianDate,
@@ -35,7 +36,7 @@ class Trail {
         this._entity = entity;
         this._clock = clock;
 
-        this._countOfTrailSegments = 4;
+        this._countOfTrailSegments = 0; // Initial value, will be updated dynamically
         this._countOfParticlePerTrailSegment = 80;
 
         this._sysTimestamp = 0; // JulianDate.secondsOfDay
@@ -44,10 +45,44 @@ class Trail {
         this._inverseModelMatrix = new Matrix4();
         this._pixelSize = 0;
 
-        this._createBuffers();
+        this._averageTickDistance = 0;
+        this._averageTickTime = 0;
+        this._averageFrameRate = 0;
 
-        let previousTime = JulianDate.clone(clock.currentTime);
-        let previousPosition = this._entity.position.getValue(clock.currentTime);
+        this._tickDistanceSum = 0;
+        this._tickTimeSum = 0;
+
+        this._tickCount = 0;
+
+        this._calibrateEnded = new Event();
+
+        this._update = false;
+
+        setTimeout(() => {
+            this._calibrate();
+        }, 3000);
+
+        let wheelEventEndTimeout = null;
+        const debounceDelay = 150;
+
+        scene.canvas.addEventListener("wheel", (e) => {
+            e.preventDefault();
+
+            // Clear any existing timeout to reset the "end" detection
+            clearTimeout(wheelEventEndTimeout);
+
+            // Set a new timeout to detect the end of the wheel event
+            wheelEventEndTimeout = setTimeout(() => {
+                // Log wheel data or manipulate the camera
+                console.log("Wheel event detected:");
+
+                this._calibrate();
+            }, debounceDelay);
+        });
+
+        this._calibrateEnded.addEventListener(() => {
+            this._createBuffers();
+        });
 
         clock.onTick.addEventListener((e) => {
             const time = clock.currentTime;
@@ -55,33 +90,74 @@ class Trail {
             this._sysTimestamp = time.secondsOfDay;
 
             const modelMatrix = this._entity.computeModelMatrix(time, new Cesium.Matrix4());
-
-            this._update = true;
-
             Matrix4.clone(modelMatrix, this._modelMatrix);
 
-            const deltaSecs = time.secondsOfDay - previousTime.secondsOfDay;
-            const distance = Cartesian3.distance(this._entity.position.getValue(time), previousPosition);
-            const frameRate = 1.0 / deltaSecs;
-            const speed = frameRate * distance;
+            if (this._countOfTrailSegments > 0) {
+                this._update = true;
+            }
+        });
+    }
 
-            const camera = scene.camera;
-            const boundingSphere = new BoundingSphere(previousPosition, distance);
-            const metersPerPixel = camera.getPixelSize(boundingSphere, scene.drawingBufferWidth, scene.drawingBufferHeight);
+    _determineCountOfTrailSegments() {
+        const scene = this._scene;
+        const camera = scene.camera;
+        const clock = this._clock;
+        const position = this._entity.position.getValue(clock.currentTime);
 
-            if (metersPerPixel == 0) {
+        const boundingSphere = new BoundingSphere(position, this._averageTickDistance);
+        const metersPerPixel = camera.getPixelSize(boundingSphere, scene.drawingBufferWidth, scene.drawingBufferHeight);
+
+        const desiredPixelSizeOfTrail = 300;
+        const pixelSizeOfTrailSegment = this._averageTickDistance / metersPerPixel;
+        this._countOfTrailSegments = Math.ceil(desiredPixelSizeOfTrail / pixelSizeOfTrailSegment);
+    }
+
+    _calibrate() {
+        this._tickDistanceSum = 0;
+        this._tickTimeSum = 0;
+        this._tickCount = 0;
+
+        const tickCountWindow = 10;
+
+        const clock = this._clock;
+        let previousTime = JulianDate.clone(clock.currentTime);
+        let previousPosition = this._entity.position.getValue(clock.currentTime);
+
+        const removeCallback = clock.onTick.addEventListener((e) => {
+            const time = clock.currentTime;
+
+            const tickTime = time.secondsOfDay - previousTime.secondsOfDay;
+            const tickDistance = Cartesian3.distance(this._entity.position.getValue(time), previousPosition);
+
+            const frameRate = 1.0 / tickTime;
+
+            if (frameRate < 10) {
+                previousTime = JulianDate.clone(clock.currentTime);
+                previousPosition = this._entity.position.getValue(clock.currentTime);
+                console.warn("Low frame rate detected:", frameRate);
+                return;
             }
 
-            const desiredTrailPixelSize = 300;
-            const oneTrailPixelSize = distance / metersPerPixel;
-            const desiredTrailCount = Math.ceil(desiredTrailPixelSize / oneTrailPixelSize);
+            // Update running sums and count for moving average
+            this._tickDistanceSum += tickDistance;
+            this._tickTimeSum += tickTime;
+            this._tickCount++;
 
-            console.log(frameRate, distance, speed, desiredTrailCount);
+            if (this._tickCount === tickCountWindow) {
+                removeCallback();
+
+                this._averageTickDistance = this._tickDistanceSum / this._tickCount;
+                this._averageTickTime = this._tickTimeSum / this._tickCount;
+
+                this._determineCountOfTrailSegments();
+
+                this._calibrateEnded.raiseEvent();
+            }
+
+            console.log(this._tickCount, tickDistance, tickTime, frameRate);
 
             previousTime = JulianDate.clone(clock.currentTime);
             previousPosition = this._entity.position.getValue(clock.currentTime);
-
-            // trail.onTick();
         });
     }
 
