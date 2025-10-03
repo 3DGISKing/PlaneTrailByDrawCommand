@@ -37,7 +37,7 @@ class Trail {
         this._clock = clock;
 
         this._countOfTrailSegments = 0; // Initial value, will be updated dynamically
-        this._countOfParticlePerTrailSegment = 80;
+        this._countOfParticlePerTrailSegment = 1;
 
         this._sysTimestamp = 0; // JulianDate.secondsOfDay
         this._oldPosition = null;
@@ -90,7 +90,9 @@ class Trail {
             this._sysTimestamp = time.secondsOfDay;
 
             const modelMatrix = this._entity.computeModelMatrix(time, new Cesium.Matrix4());
+
             Matrix4.clone(modelMatrix, this._modelMatrix);
+            Matrix4.inverse(modelMatrix, this._inverseModelMatrix);
 
             if (this._countOfTrailSegments > 0) {
                 this._update = true;
@@ -152,6 +154,11 @@ class Trail {
                 this._determineCountOfTrailSegments();
 
                 this._calibrateEnded.raiseEvent();
+
+                console.log("Calibration ended:");
+                console.log("Average Tick Distance:", this._averageTickDistance);
+                console.log("Average Tick Time:", this._averageTickTime);
+                console.log("Count of Trail Segments:", this._countOfTrailSegments);
             }
 
             console.log(this._tickCount, tickDistance, tickTime, frameRate);
@@ -186,12 +193,8 @@ class Trail {
         return false;
     }
 
-    _createVertexArray(modelMatrix) {
-        Matrix4.clone(modelMatrix, this._modelMatrix);
-
-        Matrix4.inverse(modelMatrix, this._inverseModelMatrix);
-
-        const position = Matrix4.getTranslation(modelMatrix, new Cartesian3());
+    _createVertexArray() {
+        const position = Matrix4.getTranslation(this._modelMatrix, new Cartesian3());
 
         const diff = new Cartesian3();
 
@@ -217,7 +220,7 @@ class Trail {
             this._worldPositions[ci + 2] = subPosition.z;
         }
 
-        for (let i = 0; i < totalParticleCount * 3; i += 3) {
+        for (let i = 0; i < totalParticleCount * POSITION_ATTRIBUTE_COUNT; i += POSITION_ATTRIBUTE_COUNT) {
             const worldPosition = scratchWorldPosition;
 
             worldPosition.x = this._worldPositions[i + 0];
@@ -329,7 +332,7 @@ class Trail {
                 this._command.shaderProgram.destroy();
             }
 
-            const vertexArray = this._createVertexArray(this._modelMatrix);
+            const vertexArray = this._createVertexArray();
 
             this._command = this._createDrawCommand(vertexArray);
 
