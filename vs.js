@@ -47,13 +47,13 @@ void main() {
 
     float radian = cPosition.x * PI2 - PI;
 
-    float viewDependentSpreadFactor = 0.5; 
+    float viewDependentSpreadFactor = 1.0; 
 
     vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * viewDependentSpreadFactor * mix(1., maxSpread, diff) * cPosition.y;
 
     vec3 endPosition = startPosition;
     endPosition.xy += xySpread;
-    endPosition.z = cPosition.z * maxZ;
+    endPosition.z = 0.0; //;
 
     float positionProgress = cubicOut(progress * random.w);
     vec3 currentPosition = mix(startPosition, endPosition, positionProgress);
@@ -66,7 +66,9 @@ void main() {
 
     gl_Position = czm_modelViewProjection * vec4(currentPosition, 1.0);
 
-    gl_PointSize = max(currentPosition.z * size * diff * pixelRatio, minSize * (pixelRatio > 1. ? 1.3 : 1.));
+    float zFactor = mix(0.0, cPosition.z * maxZ, positionProgress);
+
+    gl_PointSize = max(zFactor * size * diff * pixelRatio, minSize * (pixelRatio > 1. ? 1.3 : 1.));
 }`;
 
 export default vs;
