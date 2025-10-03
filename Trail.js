@@ -1,5 +1,20 @@
-const { BlendingState, Cartesian2, Cartesian3, DrawCommand, EllipsoidGeodesic, Geometry, GeometryAttribute, JulianDate, Matrix4, Pass, PrimitiveType, RenderState, ShaderProgram, VertexArray } =
-    Cesium;
+const {
+    BlendingState,
+    BoundingSphere,
+    Cartesian2,
+    Cartesian3,
+    DrawCommand,
+    EllipsoidGeodesic,
+    Geometry,
+    GeometryAttribute,
+    JulianDate,
+    Matrix4,
+    Pass,
+    PrimitiveType,
+    RenderState,
+    ShaderProgram,
+    VertexArray
+} = Cesium;
 
 import vs from "./vs.js";
 import fs from "./fs.js";
@@ -20,36 +35,8 @@ class Trail {
         this._entity = entity;
         this._clock = clock;
 
-        this._countOfTrailSegment = 360;
+        this._countOfTrailSegments = 4;
         this._countOfParticlePerTrailSegment = 80;
-
-        const totalParticleCount = this._countOfParticlePerTrailSegment * this._countOfTrailSegment;
-
-        this._positions = new Float32Array(totalParticleCount * POSITION_ATTRIBUTE_COUNT);
-        this._worldPositions = new Float32Array(totalParticleCount * POSITION_ATTRIBUTE_COUNT);
-
-        this._random = new Float32Array(totalParticleCount * RANDOM_ATTRIBUTE_COUNT);
-        this._timestamp = new Float32Array(totalParticleCount);
-
-        const positions = this._positions;
-        const random = this._random;
-
-        this._positionIndex = 0;
-
-        this._timestampIndex = 0;
-
-        for (let i = 0; i < totalParticleCount; i++) {
-            positions[i * 3 + 0] = 0;
-            positions[i * 3 + 1] = 0;
-            positions[i * 3 + 2] = 0;
-
-            random[i * 4 + 0] = Math.random();
-            random[i * 4 + 1] = Math.random();
-            random[i * 4 + 2] = Math.random();
-            random[i * 4 + 3] = Math.random();
-
-            this._timestamp[i] = 0;
-        }
 
         this._sysTimestamp = 0; // JulianDate.secondsOfDay
         this._oldPosition = null;
@@ -57,10 +44,13 @@ class Trail {
         this._inverseModelMatrix = new Matrix4();
         this._pixelSize = 0;
 
-        this._update = true;
+        this._createBuffers();
 
-        this._clock.onTick.addEventListener((e) => {
-            const time = this._clock.currentTime;
+        let previousTime = JulianDate.clone(clock.currentTime);
+        let previousPosition = this._entity.position.getValue(clock.currentTime);
+
+        clock.onTick.addEventListener((e) => {
+            const time = clock.currentTime;
 
             this._sysTimestamp = time.secondsOfDay;
 
@@ -70,8 +60,50 @@ class Trail {
 
             Matrix4.clone(modelMatrix, this._modelMatrix);
 
+            const deltaSecs = time.secondsOfDay - previousTime.secondsOfDay;
+            const distance = Cartesian3.distance(this._entity.position.getValue(time), previousPosition);
+            const frameRate = 1.0 / deltaSecs;
+            const speed = frameRate * distance;
+
+            const camera = scene.camera;
+            const boundingSphere = new BoundingSphere(previousPosition, distance);
+            const metersPerPixel = camera.getPixelSize(boundingSphere, scene.drawingBufferWidth, scene.drawingBufferHeight);
+
+            if (metersPerPixel == 0) {
+            }
+
+            const desiredTrailPixelSize = 300;
+            const oneTrailPixelSize = distance / metersPerPixel;
+            const desiredTrailCount = Math.ceil(desiredTrailPixelSize / oneTrailPixelSize);
+
+            console.log(frameRate, distance, speed, desiredTrailCount);
+
+            previousTime = JulianDate.clone(clock.currentTime);
+            previousPosition = this._entity.position.getValue(clock.currentTime);
+
             // trail.onTick();
         });
+    }
+
+    _createBuffers() {
+        const totalParticleCount = this._countOfParticlePerTrailSegment * this._countOfTrailSegments;
+
+        this._positions = new Float32Array(totalParticleCount * POSITION_ATTRIBUTE_COUNT);
+        this._worldPositions = new Float32Array(totalParticleCount * POSITION_ATTRIBUTE_COUNT);
+        this._random = new Float32Array(totalParticleCount * RANDOM_ATTRIBUTE_COUNT);
+        this._timestamp = new Float32Array(totalParticleCount);
+
+        const random = this._random;
+
+        for (let i = 0; i < totalParticleCount; i++) {
+            random[i * 4 + 0] = Math.random();
+            random[i * 4 + 1] = Math.random();
+            random[i * 4 + 2] = Math.random();
+            random[i * 4 + 3] = Math.random();
+        }
+
+        this._positionIndex = 0;
+        this._timestampIndex = 0;
     }
 
     isDestroyed() {
@@ -91,7 +123,7 @@ class Trail {
             Cartesian3.subtract(position, this._oldPosition, diff);
         }
 
-        const totalParticleCount = this._countOfParticlePerTrailSegment * this._countOfTrailSegment;
+        const totalParticleCount = this._countOfParticlePerTrailSegment * this._countOfTrailSegments;
 
         for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
             const ci = (this._positionIndex % (totalParticleCount * POSITION_ATTRIBUTE_COUNT)) + i * POSITION_ATTRIBUTE_COUNT;
