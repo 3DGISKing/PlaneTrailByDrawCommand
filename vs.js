@@ -6,7 +6,6 @@ in vec3 position;
 in vec4 random;
 in float timestamp;
 
-uniform float pixelSize;
 uniform float pixelRatio;
 uniform float sysTimestamp;
 uniform float size;
@@ -18,8 +17,6 @@ uniform float maxSpread;
 uniform float maxZ;
 uniform float maxDiff;
 uniform float diffPow;
-uniform mat4 modelMatrix;
-uniform mat4 inverseModelMatrix;
 
 out float vProgress;
 out float vRandom;

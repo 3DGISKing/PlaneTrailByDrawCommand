@@ -94,10 +94,8 @@ class Trail {
 
             this._sysTimestamp = time.secondsOfDay;
 
-            const modelMatrix = this._entity.computeModelMatrix(time, new Cesium.Matrix4());
-
-            Matrix4.clone(modelMatrix, this._modelMatrix);
-            Matrix4.inverse(modelMatrix, this._inverseModelMatrix);
+            this._entity.computeModelMatrix(time, this._modelMatrix);
+            Matrix4.inverse(this._modelMatrix, this._inverseModelMatrix);
 
             if (this._countOfTrailSegments > 0) {
                 this._update = true;
@@ -288,8 +286,6 @@ class Trail {
     }
 
     _createDrawCommand(vertexArray) {
-        this._pixelSize = this._calcPixelSize();
-
         const shaderProgram = ShaderProgram.fromCache({
             context: this._scene.context,
             vertexShaderSource: vs,
@@ -305,7 +301,6 @@ class Trail {
             vertexArray: vertexArray,
             shaderProgram: shaderProgram,
             uniformMap: {
-                pixelSize: () => this._pixelSize,
                 pixelRatio: () => window.devicePixelRatio,
                 sysTimestamp: () => this._sysTimestamp,
                 size: () => 0.05,
@@ -320,9 +315,7 @@ class Trail {
                 blur: () => 1,
                 far: () => 10,
                 maxDiff: () => 100,
-                diffPow: () => 0.24,
-                modelMatrix: () => this._modelMatrix,
-                inverseModelMatrix: () => this._inverseModelMatrix
+                diffPow: () => 0.24
             },
             renderState: RenderState.fromCache({
                 blending: BlendingState.ADDITIVE_BLEND
@@ -345,8 +338,6 @@ class Trail {
             const vertexArray = this._createVertexArray();
 
             this._command = this._createDrawCommand(vertexArray);
-
-            // this._command = this._createDrawCommandTest();
         }
 
         if (!this._command) {
@@ -359,198 +350,6 @@ class Trail {
         if (passes.render) {
             commandList.push(this._command);
         }
-    }
-
-    _calcPixelSize() {
-        const scene = this._scene;
-
-        const width = scene.canvas.clientWidth;
-        const height = scene.canvas.clientHeight;
-
-        const centerX = Math.floor(width / 2);
-        const centerY = Math.floor(height / 2);
-
-        const globe = scene.globe;
-
-        let leftPosition;
-        let rightPosition;
-
-        let leftCartographic;
-        let rightCartographic;
-
-        let pixelDistance = -1;
-
-        for (let x = centerX; x < width; x++) {
-            for (let y = centerY; y < height; y++) {
-                const left = scene.camera.getPickRay(new Cartesian2(x, y));
-                const right = scene.camera.getPickRay(new Cartesian2(x + 1, y));
-
-                if (!left) {
-                    continue;
-                }
-
-                if (!right) {
-                    continue;
-                }
-
-                leftPosition = globe.pick(left, scene);
-                rightPosition = globe.pick(right, scene);
-
-                if (!leftPosition) {
-                    continue;
-                }
-
-                if (!rightPosition) {
-                    continue;
-                }
-
-                leftCartographic = globe.ellipsoid.cartesianToCartographic(leftPosition);
-                rightCartographic = globe.ellipsoid.cartesianToCartographic(rightPosition);
-
-                geodesic.setEndPoints(leftCartographic, rightCartographic);
-
-                pixelDistance = geodesic.surfaceDistance;
-
-                return pixelDistance;
-            }
-        }
-
-        return -1.0;
-    }
-
-    onTick() {
-        const time = this._clock.currentTime;
-        this._sysTimestamp = time.secondsOfDay;
-
-        const modelMatrix = this._entity.computeModelMatrix(time, new Cesium.Matrix4());
-
-        Matrix4.clone(modelMatrix, this._modelMatrix);
-
-        Matrix4.inverse(modelMatrix, this._inverseModelMatrix);
-
-        this._update = true;
-    }
-
-    _prepareRandom() {
-        // for   count = 4800;
-        const count = 4800;
-        const random = new Float32Array(count * RANDOM_ATTRIBUTE_COUNT);
-
-        for (let i = 0; i < count; i++) {
-            random[i * 4 + 0] = Math.random();
-            random[i * 4 + 1] = Math.random();
-            random[i * 4 + 2] = Math.random();
-            random[i * 4 + 3] = Math.random();
-        }
-    }
-
-    _createDrawCommandTest() {
-        const delta = 3;
-        const endTime = this._clock.currentTime;
-        const startTime = JulianDate.addSeconds(endTime, -delta, new JulianDate());
-
-        const step = 1 / 20;
-        const count = (delta / step) * this._countOfParticlePerTrailSegment;
-
-        const positions = new Float32Array(count * POSITION_ATTRIBUTE_COUNT);
-        const random = new Float32Array(count * RANDOM_ATTRIBUTE_COUNT);
-        const timestamp = new Float32Array(count);
-
-        let timeIndex = 0;
-        let oldPosition;
-        const diff = new Cartesian3();
-
-        console.time("create");
-
-        for (let t = endTime; JulianDate.lessThan(startTime, t); t = JulianDate.addSeconds(t, -step, new JulianDate())) {
-            const position = this._entity.position.getValue(t);
-
-            if (!position) {
-                return undefined;
-            }
-
-            if (oldPosition) {
-                Cartesian3.subtract(position, oldPosition, diff);
-            }
-
-            for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
-                const ci = (timeIndex * this._countOfParticlePerTrailSegment + i) * POSITION_ATTRIBUTE_COUNT;
-
-                let subPosition = position;
-
-                if (oldPosition) {
-                    const step = Cartesian3.multiplyByScalar(diff, i / this._countOfParticlePerTrailSegment, scratchStep);
-
-                    subPosition = Cartesian3.add(oldPosition, step, scratchSubPosition);
-                }
-
-                const worldPosition = scratchWorldPosition;
-
-                worldPosition.x = subPosition.x;
-                worldPosition.y = subPosition.y;
-                worldPosition.z = subPosition.z;
-
-                const local = Matrix4.multiplyByPoint(this._inverseModelMatrix, worldPosition, scratchLocal);
-
-                positions[ci + 0] = local.x;
-                positions[ci + 1] = local.y;
-                positions[ci + 2] = local.z;
-            }
-
-            oldPosition = position;
-
-            for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
-                const ci = (timeIndex * this._countOfParticlePerTrailSegment + i) * RANDOM_ATTRIBUTE_COUNT;
-
-                random[ci + 0] = Math.random();
-                random[ci + 1] = Math.random();
-                random[ci + 2] = Math.random();
-                random[ci + 3] = Math.random();
-            }
-
-            for (let i = 0; i < this._countOfParticlePerTrailSegment; i++) {
-                const ci = timeIndex * this._countOfParticlePerTrailSegment + i;
-
-                timestamp[ci + 0] = t.secondsOfDay;
-            }
-
-            timeIndex++;
-        }
-
-        console.timeEnd("create");
-
-        const geometry = new Geometry({
-            attributes: {
-                position: new GeometryAttribute({
-                    componentDatatype: Cesium.ComponentDatatype.FLOAT,
-                    componentsPerAttribute: 3,
-                    values: positions
-                }),
-                random: new GeometryAttribute({
-                    componentDatatype: Cesium.ComponentDatatype.FLOAT,
-                    componentsPerAttribute: 4,
-                    values: random
-                }),
-                timestamp: new GeometryAttribute({
-                    componentDatatype: Cesium.ComponentDatatype.FLOAT,
-                    componentsPerAttribute: 1,
-                    values: timestamp
-                })
-            },
-            primitiveType: PrimitiveType.POINTS
-        });
-
-        const vertexArray = VertexArray.fromGeometry({
-            context: this._scene.context,
-            geometry: geometry,
-            attributeLocations: {
-                position: 0,
-                random: 1,
-                timestamp: 2
-            }
-        });
-
-        return this._createDrawCommand(vertexArray);
     }
 }
 
