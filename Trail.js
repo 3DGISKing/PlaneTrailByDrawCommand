@@ -237,7 +237,7 @@ class Trail {
 
             const local = Matrix4.multiplyByPoint(this._inverseModelMatrix, worldPosition, scratchLocal);
 
-            this._positions[i + 0] = local.x;
+            this._positions[i + 0] = local.x - 13;
             this._positions[i + 1] = local.y;
             this._positions[i + 2] = local.z;
         }
