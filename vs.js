@@ -46,12 +46,12 @@ void main() {
 
     float viewDependentSpreadFactor = 1.0; 
 
-    vec2 xySpread = vec2(cos(radian), sin(radian)) * spread * viewDependentSpreadFactor * mix(1., maxSpread, diff) * cPosition.y;
+    vec2 yzSpread = vec2(cos(radian), sin(radian)) * spread * viewDependentSpreadFactor * mix(1., maxSpread, diff) * cPosition.y;
 
     vec3 endPosition = startPosition;
-    endPosition.xy += xySpread;
-    endPosition.z = 0.0; //;
-
+    endPosition.yz += yzSpread;
+    
+    
     float positionProgress = cubicOut(progress * random.w);
     vec3 currentPosition = mix(startPosition, endPosition, positionProgress);
 

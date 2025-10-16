@@ -303,7 +303,7 @@ class Trail {
             uniformMap: {
                 pixelRatio: () => window.devicePixelRatio,
                 sysTimestamp: () => this._sysTimestamp,
-                size: () => 0.05,
+                size: () => 2,
                 minSize: () => 1,
                 speed: () => 0.012,
                 fadeSpeed: () => 1.1,
